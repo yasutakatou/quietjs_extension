@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+</head>
+<body>
+URL: <input id="urls"> INPUT: <input id="inputs"> WORD: <input id="words"> <button id="add">Add</button>
+<hr>
+<button id="send">send</button>
+<div id="todos"></div>
+<script type="text/javascript" src="quiet.js"></script>
+<script async type="text/javascript" src="quiet-emscripten.js"></script>
+<script>
+var todos = [];
+
+function get_todos() {
+  var todos = new Array;
+  var todos_str = localStorage.getItem('todo');
+  if (todos_str !== null) {
+    todos = JSON.parse(todos_str); 
+  }
+  return todos;
+}
+ 
+function add() {
+  var urls = document.getElementById('urls').value;
+  var inputs = document.getElementById('inputs').value;
+  var words = document.getElementById('words').value;
+
+  if (urls.length == 0 || inputs.length == 0) {
+    alert("Parameters Empty!")
+    return;
+  }
+
+  var todos = get_todos();
+  todos.push([urls, inputs, words]);
+  localStorage.setItem('todo', JSON.stringify(todos));
+  console.log(todos);
+  show();
+
+  return false;
+}
+ 
+function remove() {
+  var id = this.getAttribute('id');
+  var todos = get_todos();
+  todos.splice(id, 1);
+  localStorage.setItem('todo', JSON.stringify(todos));
+
+  show();
+
+  return false;
+}
+ 
+function show() {
+  var todos = get_todos();
+
+  var html = '<ul>';
+  for(var i=0; i<todos.length; i++) {
+    html += '<li>URL: (' + todos[i][0] + ') INPUT: (' + todos[i][1] + ') WORDS: (' + todos[i][2] + ') <button class="remove" id="' + i  + '">x</button></li>';
+  };
+  html += '</ul>';
+
+  document.getElementById('todos').innerHTML = html;
+
+  var buttons = document.getElementsByClassName('remove');
+  for (var i=0; i < buttons.length; i++) {
+    buttons[i].addEventListener('click', remove);
+  };
+}
+
+show();
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+document.addEventListener("DOMContentLoaded", function() {
+  document.getElementById('add').addEventListener('click', add);
+  document.getElementById('send').addEventListener('click', startSend);
+});
+
+var transmit;
+
+function startSend() {
+  console.log("start");
+  let inputs = document.getElementById("send");
+  inputs.innerText = "Send..";
+  inputs.disabled = true;
+  onQuietReady();
+
+  var todos = get_todos();
+  console.log(location.href);
+  //console.log(todos);
+  var sends = "";
+  for(var i = 0; i < todos.length; i++) {
+    sends = sends + todos[i][0] + ":" + todos[i][1] + ":" + todos[i][2] + ",";
+  };
+  console.log(sends);
+  transmit.transmit(Quiet.str2ab(sends));
+}
+
+function onTransmitFinish() {
+  let inputs = document.getElementById("send");
+  inputs.innerText = "Send";
+  inputs.disabled = false;
+};
+
+Quiet.init({
+    profilesPrefix: "/",
+    memoryInitializerPrefix: "/",
+    libfecPrefix: "/"
+});
+
+function onQuietReady() {
+  transmit = Quiet.transmitter({profile: 'ultrasonic-experimental', onFinish: onTransmitFinish, clampFrame: false});
+};
+
+function onQuietFail(reason) {
+  console.log("Sorry, it looks like there was a problem with this example " + reason);
+};
+
+function onDOMLoad() {
+  Quiet.addReadyCallback(onQuietReady, onQuietFail);
+};
+
+</script>
+</body>
+</html>
